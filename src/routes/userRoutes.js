@@ -1,8 +1,21 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
-// insertion
+// Register a new user
+router.post('/', async (req, res) => {
+  try{
+  
+      const newUser = new User(req.body).save();
+      res.status(201).json({message: 'User registered successfully' });
+  } catch (error) {
+      res.status(400).json({ error: 'User already exists' });
+  }
+});
+
+/* insertion
 router.post('/', async (req, res) => {
   try {
     const user = new User(req.body);
@@ -11,7 +24,7 @@ router.post('/', async (req, res) => {
   } catch(err) {
     res.status(400).json({ error: err.message });
   }
-});
+}); */
 
 // select all
 router.get('/', async (req, res) => {
@@ -51,6 +64,23 @@ router.delete('/:id', async (req, res) => {
   } catch(err) {
     res.status(400).json({ error: err.message });
   }
+});
+
+//Login user and generate JWT token
+router.post('/login', async (req, res) => {
+     const { email, password } = req.body;
+     try{
+         const user = await User.findOne({ email });
+         if (!User) return res.status(404).json({ error: 'User not found'});
+
+         const isMatch = await bcrypt.compare(password, user.password);
+         if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
+
+         const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h'});
+         res.json({ token });
+     } catch (error) {
+         res.status(500).json({ error: 'Server error' });
+     }
 });
 
 module.exports = router;
