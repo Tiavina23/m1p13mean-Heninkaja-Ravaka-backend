@@ -68,19 +68,31 @@ router.delete('/:id', async (req, res) => {
 
 //Login user and generate JWT token
 router.post('/login', async (req, res) => {
-     const { email, password } = req.body;
-     try{
-         const user = await User.findOne({ email });
-         if (!User) return res.status(404).json({ error: 'User not found'});
+  const { email, password } = req.body;
 
-         const isMatch = await bcrypt.compare(password, user.password);
-         if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ error: 'User not found' });
 
-         const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '1h'});
-         res.json({ token });
-     } catch (error) {
-         res.status(500).json({ error: 'Server error' });
-     }
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
+
+    // Créer le token JWT avec l’ID et le rôle
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      "SECRET_KEY",
+      { expiresIn: "1d" }
+    );
+
+    // Renvoi du token,rôle,email
+    res.json({ 
+      token, 
+      role: user.role,
+      email: user.email
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 module.exports = router;
