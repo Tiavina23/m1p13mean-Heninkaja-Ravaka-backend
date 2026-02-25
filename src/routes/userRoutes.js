@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const authController = require('../controllers/authController');
 
 // Register a new user
 router.post('/', async (req, res) => {
@@ -66,33 +67,7 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-//Login user and generate JWT token
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-
-  try {
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
-
-    // Créer le token JWT avec l’ID et le rôle
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      "SECRET_KEY",
-      { expiresIn: "1d" }
-    );
-
-    // Renvoi du token,rôle,email
-    res.json({ 
-      token, 
-      role: user.role,
-      email: user.email
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
+router.post('/register', authController.register);
+router.post('/login', authController.login);
 
 module.exports = router;
