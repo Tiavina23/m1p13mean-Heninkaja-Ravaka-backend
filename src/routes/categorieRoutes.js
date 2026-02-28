@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Categorie = require('../models/Categorie');
+const auth = require('../middlewares/auth');
 
 // insertion
 router.post('/', async (req, res) => {
@@ -8,6 +9,15 @@ router.post('/', async (req, res) => {
   await cat.save();
   res.status(201).json(cat);
 });
+
+// Ajouter catégorie (admin)
+router.post('/a', auth, async (req,res)=>{
+  if(req.user.role!=='admin') return res.status(403).json({ message:"Accès refusé" });
+  const cat = new Categorie({ name:req.body.name });
+  await cat.save();
+  res.json(cat);
+});
+
 
 // select all
 router.get('/', async (req, res) => {

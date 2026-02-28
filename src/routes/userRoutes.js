@@ -76,7 +76,6 @@ router.post('/login', async (req, res) => {
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
-
     // Créer le token JWT avec l’ID et le rôle
     const token = jwt.sign(
       { id: user._id, role: user.role },
@@ -88,7 +87,7 @@ router.post('/login', async (req, res) => {
     res.json({ 
       token, 
       role: user.role,
-      email: user.email
+      email: user.email,
     });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });

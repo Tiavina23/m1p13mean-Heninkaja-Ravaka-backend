@@ -2,9 +2,17 @@ const mongoose = require('mongoose');
 
 const shopSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  description: { type: String },
-  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  isValidated: { type: Boolean, default: false }
-});
+  description: String,
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  status: {
+    type: String,
+    enum: ['true', 'false'],
+    default: 'false'
+  }
+}, { timestamps: true });
 
 module.exports = mongoose.model('Shop', shopSchema);
