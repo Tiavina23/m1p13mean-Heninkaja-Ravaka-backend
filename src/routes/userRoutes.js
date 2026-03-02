@@ -70,4 +70,15 @@ router.delete('/:id', async (req, res) => {
 router.post('/register', authController.register);
 router.post('/login', authController.login);
 
+
+router.get('/pending-shops', async (req, res) => {
+  const shops = await User.find({ role: 'shop', isActive: false });
+  res.json(shops);
+});
+
+router.put('/validate/:id', async (req, res) => {
+  await User.findByIdAndUpdate(req.params.id, { isActive: true });
+  res.json({ message: "Shop validated successfully" });
+});
+
 module.exports = router;
