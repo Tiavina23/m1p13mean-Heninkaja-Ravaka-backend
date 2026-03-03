@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Shop = require('../models/Shop');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -6,54 +7,58 @@ const jwt = require('jsonwebtoken');
 // =========================
 // REGISTER
 // =========================
+
 exports.register = async (req, res) => {
   try {
 
-    let role = "acheteur"; // rôle par défaut
+    let role = "acheteur";
 
-    // Autoriser seulement shop ou acheteur
     if (req.body.role === "shop") {
       role = "shop";
     }
 
-    // Interdire création admin via register
     if (req.body.role === "admin") {
       return res.status(403).send({
         message: "You cannot register as admin."
       });
     }
 
-    // Vérifier si email existe déjà
     const existingUser = await User.findOne({ email: req.body.email });
     if (existingUser) {
       return res.status(400).send({
         message: "Email already in use."
       });
     }
-
     const user = new User({
       name: req.body.name,
       email: req.body.email,
       password: bcrypt.hashSync(req.body.password, 8),
       role: role,
-      isActive: role === "shop" ? false : true // shop doit être validé
+      isActive: role === "shop" ? false : true
     });
 
     await user.save();
 
+    if (role === "shop") {
+      const shop = new Shop({
+        name: req.body.shopName || req.body.name,
+        description: req.body.shopDescription || '',
+        owner: user._id,
+        isValidated: false
+      });
+      await shop.save();
+    }
+
     res.status(201).send({
       message: role === "shop"
-        ? "Shop registered successfully. Waiting for admin approval."
-        : "User registered successfully!"
+        ? "Shop registered. Waiting for admin validation."
+        : "User registered successfully."
     });
 
   } catch (err) {
-    res.status(500).send({
-      message: err.message
-    });
+    res.status(500).send({ message: err.message });
   }
 };
-
 
 
 // =========================
