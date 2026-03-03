@@ -91,4 +91,8 @@ router.get('/:id', async (req, res) => {
     res.status(404).json({ error: 'User non trouvé' });
   }
 });
+router.get('/', async (req, res) => {
+  const user = await User.find();
+  res.json(user);
+});
 module.exports = router;

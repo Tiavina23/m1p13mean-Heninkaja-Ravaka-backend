@@ -9,6 +9,7 @@ const jwt = require('jsonwebtoken');
 // =========================
 
 exports.register = async (req, res) => {
+  
   try {
 
     let role = "acheteur";
@@ -32,7 +33,7 @@ exports.register = async (req, res) => {
     const user = new User({
       name: req.body.name,
       email: req.body.email,
-      password: bcrypt.hashSync(req.body.password, 8),
+      password: req.body.password,
       role: role,
       isActive: role === "shop" ? false : true
     });
@@ -60,47 +61,36 @@ exports.register = async (req, res) => {
   }
 };
 
-
 // =========================
 // LOGIN
 // =========================
 exports.login = async (req, res) => {
   try {
+    const { email, password } = req.body;
+    console.log("1. Tentative pour :", email);
 
-    const user = await User.findOne({ email: req.body.email });
-
+    const user = await User.findOne({ email: email.toLowerCase().trim() }); // Nettoyage de l'email
     if (!user) {
-      return res.status(404).send({
-        message: "User not found."
-      });
+      console.log("2. Utilisateur non trouvé en BDD");
+      return res.status(404).json({ message: "Utilisateur non trouvé" });
     }
 
-    const passwordIsValid = bcrypt.compareSync(
-      req.body.password,
-      user.password
-    );
+    console.log("3. Password saisi :", password);
+    console.log("4. Hash en BDD :", user.password);
 
-    if (!passwordIsValid) {
-      return res.status(401).send({
-        accessToken: null,
-        message: "Invalid password."
-      });
+    // Utilise await pour la comparaison
+    const isMatch = await bcrypt.compare(password, user.password);
+    console.log("5. Résultat match :", isMatch);
+
+    if (!isMatch) {
+      return res.status(401).json({ message: "Mot de passe incorrect" });
     }
 
-    // Bloquer shop non validé
-    if (user.role === "shop" && !user.isActive) {
-      return res.status(403).send({
-        message: "Your shop account is waiting for admin validation."
-      });
-    }
+    // Génération du token (vérifie que process.env.SECRET est bien défini)
+    const secret = process.env.SECRET || 'ma_cle_de_secours'; 
+    const token = jwt.sign({ id: user._id, role: user.role }, secret, { expiresIn: '24h' });
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.SECRET,
-      { expiresIn: 86400 } // 24h
-    );
-
-    res.status(200).send({
+    res.json({
       id: user._id,
       name: user.name,
       email: user.email,
@@ -109,8 +99,7 @@ exports.login = async (req, res) => {
     });
 
   } catch (err) {
-    res.status(500).send({
-      message: err.message
-    });
+    console.error("ERREUR LOGIN:", err);
+    res.status(500).json({ message: "Erreur serveur" });
   }
 };
