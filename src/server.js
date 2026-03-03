@@ -1,6 +1,8 @@
 require("dotenv").config();
 const app = require("./app");
 const connectDB = require("./config/db");
+const express = require('express');
+const path = require('path');
 
 const userRoutes = require('./routes/userRoutes');
 const shopRoutes = require('./routes/shopRoutes');
@@ -9,6 +11,9 @@ const produitRoutes = require('./routes/produitRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const promotionRoutes = require('./routes/promotionRoutes');
 const feteRoutes = require('./routes/feteRoutes');
+
+const carteRoutes = require('./routes/carteRoutes');
+
 
 connectDB();
 
@@ -19,10 +24,8 @@ app.use('/api/produits', produitRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/promotions', promotionRoutes);
 app.use('/api/fetes', feteRoutes);
-<<<<<<< HEAD
-=======
-
->>>>>>> 568a971df1fa11043e8a93cae3cbc916a5ed984f
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/api/carte', carteRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

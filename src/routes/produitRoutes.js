@@ -1,129 +1,70 @@
-const express = require('express');
+const express = require('express');  
 const router = express.Router();
 const Produit = require('../models/Produit');
 const Shop = require('../models/Shop');
 const { verifyToken } = require('../middlewares/authJwt');
+const multer = require('multer');
+const path = require('path');
 
+// Multer pour upload image
+const storage = multer.diskStorage({
+  destination: (req,file,cb)=>cb(null,'src/uploads/'),
+  filename: (req,file,cb)=>cb(null, Date.now()+path.extname(file.originalname))
+});
+const upload = multer({ storage });
 
-// =========================
-// AJOUTER PRODUIT (SHOP)
-// =========================
-router.post('/', verifyToken, async (req, res) => {
-  try {
+// Ajouter produit
+router.post('/', verifyToken, upload.single('image'), async (req,res)=>{
+  if(req.user.role!=='shop') return res.status(403).json({ message:"Accès refusé" });
+  const shop = await Shop.findOne({ owner: req.user.id });
 
-    if (req.user.role !== "shop") {
-      return res.status(403).send({ message: "Only shops can add products" });
-    }
+  const produit = new Produit({
+    name:req.body.name,
+    description:req.body.description,
+    prix:req.body.prix,
+    stock:req.body.stock,
+    categorie:req.body.categorie,
+    shop:shop._id,
+    image:req.file ? req.file.filename : ''
+  });
+  await produit.save();
+  res.json(produit);
+});
 
-    const shop = await Shop.findOne({ owner: req.user._id });
+// select all
+router.get('/allproduit', async (req, res) => {
+  const produits = await Produit.find().populate('categorie shop');
+  res.json(produits);
+});
 
-    if (!shop || !shop.isValidated) {
-      return res.status(403).send({ message: "Shop not validated yet" });
-    }
-
-    const produit = new Produit({
-      name: req.body.name,
-      description: req.body.description,
-      prix: req.body.prix,
-      stock: req.body.stock,
-      image: req.body.image,
-      categorie: req.body.categorie,
-      shop: shop._id
-    });
-
-    await produit.save();
-
-    res.status(201).send(produit);
-
-  } catch (err) {
-    res.status(500).send({ message: err.message });
-  }
+// Lister produits du shop connecté
+router.get('/', verifyToken, async (req,res)=>{
+  if(req.user.role!=='shop') return res.status(403).json({ message:"Accès refusé" });
+  const shop = await Shop.findOne({ owner: req.user.id });
+  const produits = await Produit.find({ shop:shop._id }).populate('categorie','name');
+  res.json(produits);
 });
 
 
-// =========================
-// LISTE DES PRODUITS DU SHOP CONNECTÉ
-// =========================
-router.get('/my-products', verifyToken, async (req, res) => {
-  try {
+router.put('/:id', verifyToken, upload.single('image'), async (req,res)=>{
+  const produit = await Produit.findById(req.params.id);
+  if(!produit) return res.status(404).json({ message:"Produit introuvable" });
+  if(req.user.role==='shop' && produit.shop.toString()!==req.user.id) return res.status(403).json({ message:"Accès refusé" });
 
-    if (req.user.role !== "shop") {
-      return res.status(403).send({ message: "Access denied" });
-    }
+  produit.name=req.body.name;
+  produit.description=req.body.description;
+  produit.price=req.body.price;
+  produit.stock=req.body.stock;
+  produit.categorie=req.body.categorie;
+  if(req.file) produit.image=req.file.filename;
 
-    const shop = await Shop.findOne({ owner: req.user._id });
-
-    const produits = await Produit.find({ shop: shop._id })
-      .populate('categorie');
-
-    res.send(produits);
-
-  } catch (err) {
-    res.status(500).send({ message: err.message });
-  }
+  await produit.save();
+  res.json(produit);
 });
 
-
-// =========================
-// SUPPRIMER PRODUIT
-// =========================
-router.delete('/:id', verifyToken, async (req, res) => {
-  try {
-
-    const produit = await Produit.findById(req.params.id);
-
-    if (!produit) {
-      return res.status(404).send({ message: "Produit not found" });
-    }
-
-    const shop = await Shop.findOne({ owner: req.user._id });
-
-    if (!shop || produit.shop.toString() !== shop._id.toString()) {
-      return res.status(403).send({ message: "Not authorized" });
-    }
-
-    await produit.deleteOne();
-
-    res.send({ message: "Produit deleted successfully" });
-
-  } catch (err) {
-    res.status(500).send({ message: err.message });
-  }
+// suppression
+router.delete('/:id', async (req, res) => {
+  await Produit.findByIdAndDelete(req.params.id);
+  res.json({ message: 'Produit supprimée' });
 });
-
-
-// =========================
-// MODIFIER PRODUIT
-// =========================
-router.put('/:id', verifyToken, async (req, res) => {
-  try {
-
-    const produit = await Produit.findById(req.params.id);
-
-    if (!produit) {
-      return res.status(404).send({ message: "Produit not found" });
-    }
-
-    const shop = await Shop.findOne({ owner: req.user._id });
-
-    if (!shop || produit.shop.toString() !== shop._id.toString()) {
-      return res.status(403).send({ message: "Not authorized" });
-    }
-
-    produit.name = req.body.name || produit.name;
-    produit.description = req.body.description || produit.description;
-    produit.prix = req.body.prix || produit.prix;
-    produit.stock = req.body.stock || produit.stock;
-    produit.image = req.body.image || produit.image;
-    produit.categorie = req.body.categorie || produit.categorie;
-
-    await produit.save();
-
-    res.send(produit);
-
-  } catch (err) {
-    res.status(500).send({ message: err.message });
-  }
-});
-
 module.exports = router;

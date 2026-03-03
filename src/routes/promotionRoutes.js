@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const Promotion = require('../models/Promotion');
+const { verifyToken } = require('../middlewares/authJwt');
 const Shop = require('../models/Shop');
 
 // GET promotions du shop connecté
-router.get('/', async (req, res) => {
+router.get('/', verifyToken, async (req, res) => {
   try {
     if(req.user.role !== 'shop') return res.status(403).json({ message: "Accès refusé" });
     const shop = await Shop.findOne({ owner: req.user.id });
@@ -16,7 +17,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST nouvelle promotion
-router.post('/', async (req, res) => {
+router.post('/', verifyToken, async (req, res) => {
   try {
     if(req.user.role !== 'shop') return res.status(403).json({ message: "Accès refusé" });
     const shop = await Shop.findOne({ owner: req.user.id });
