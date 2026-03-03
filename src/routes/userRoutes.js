@@ -1,43 +1,88 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
+const Shop = require('../models/Shop');
+const mongoose = require('mongoose');
 const authController = require('../controllers/authController');
 
-// Register a new user
-router.post('/', async (req, res) => {
-  try{
-  
-      const newUser = new User(req.body).save();
-      res.status(201).json({message: 'User registered successfully' });
-  } catch (error) {
-      res.status(400).json({ error: 'User already exists' });
+// AUTH
+router.post('/register', authController.register);
+router.post('/login', authController.login);
+
+// =========================
+// GET SHOPS EN ATTENTE
+// =========================
+router.get('/pending-shops', async (req, res) => {
+  try {
+
+    const shops = await Shop.find({ isValidated: false })
+      .populate('owner', 'name email');
+
+    console.log("Shops trouvés:", shops); 
+    res.status(200).json(shops)
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
-/* insertion
-router.post('/', async (req, res) => {
+// =========================
+// VALIDATION SHOP
+// =========================
+router.put('/validate-shop/:id', async (req, res) => {
   try {
-    const user = new User(req.body);
-    await user.save();
-    res.status(201).json(user);
-  } catch(err) {
-    res.status(400).json({ error: err.message });
-  }
-}); */
 
-// select all
-router.get('/', async (req, res) => {
-  try {
-    const users = await User.find();
-    res.json(users);
-  } catch(err) {
-    res.status(500).json({ error: err.message });
+    const shop = await Shop.findById(req.params.id);
+
+    if (!shop) {
+      return res.status(404).json({ message: "Shop non trouvé" });
+    }
+
+    // 1️⃣ Valider shop
+    shop.isValidated = true;
+    await shop.save();
+
+    // 2️⃣ Activer le user
+    await User.findByIdAndUpdate(shop.owner, { isActive: true });
+
+    res.json({ message: "Shop validé avec succès" });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
-// select one
+router.get('/all-shops', async (req, res) => {
+  try {
+
+    const shops = await Shop.find()
+      .populate('owner', 'name email')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json(shops);
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+router.delete('/delete-shop/:id', async (req, res) => {
+  try {
+
+    const shop = await Shop.findById(req.params.id);
+    if (!shop) {
+      return res.status(404).json({ message: "Shop non trouvé" });
+    }
+
+    await Shop.findByIdAndDelete(req.params.id);
+
+    await User.findByIdAndDelete(shop.owner);
+
+    res.json({ message: "Shop supprimé avec succès" });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 router.get('/:id', async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -46,39 +91,4 @@ router.get('/:id', async (req, res) => {
     res.status(404).json({ error: 'User non trouvé' });
   }
 });
-
-// modification
-router.put('/:id', async (req, res) => {
-  try {
-    const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json(user);
-  } catch(err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-// suppression
-router.delete('/:id', async (req, res) => {
-  try {
-    await User.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Utilisateur supprimé' });
-  } catch(err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-router.post('/register', authController.register);
-router.post('/login', authController.login);
-
-
-router.get('/pending-shops', async (req, res) => {
-  const shops = await User.find({ role: 'shop', isActive: false });
-  res.json(shops);
-});
-
-router.put('/validate/:id', async (req, res) => {
-  await User.findByIdAndUpdate(req.params.id, { isActive: true });
-  res.json({ message: "Shop validated successfully" });
-});
-
 module.exports = router;
