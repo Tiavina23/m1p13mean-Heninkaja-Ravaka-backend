@@ -19,6 +19,10 @@ app.use('/api/produits', produitRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/promotions', promotionRoutes);
 app.use('/api/fetes', feteRoutes);
+<<<<<<< HEAD
+=======
+
+>>>>>>> 568a971df1fa11043e8a93cae3cbc916a5ed984f
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
